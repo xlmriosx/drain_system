@@ -10,11 +10,6 @@ button = digitalio.DigitalInOut(board.GP3)
 coil_in = digitalio.DigitalInOut(board.GP13)
 coil_in.direction = digitalio.Direction.OUTPUT
  
-# Reference to energy network to connect filter engine
-energy_engine = digitalio.DigitalInOut(board.GP15)
-energy_engine.direction = digitalio.Direction.OUTPUT
-energy_engine.value = True
- 
 # To make sure microcontroller is working
 led = digitalio.DigitalInOut(board.LED)
 led.direction = digitalio.Direction.OUTPUT
@@ -40,3 +35,4 @@ while True:
     time.sleep(2)
     coil_in = False
     print("No existe peligro de inundación.")
+    
