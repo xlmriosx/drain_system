@@ -18,6 +18,7 @@ energy_engine.value = True
 # To make sure microcontroller is working
 led = digitalio.DigitalInOut(board.LED)
 led.direction = digitalio.Direction.OUTPUT
+led.value = True
  
 # Alarm
 sound_alert = digitalio.DigitalInOut(board.GP17)
@@ -27,16 +28,15 @@ while True:
     # To read all time what value have waters' sensor
     button.direction = digitalio.Direction.INPUT
     while not button.value:
+        print("Existe peligro de inundación.")
         if button.value:
             coil_in = True
-        led.value = True
+            print("Se activa el motor de filtrado.")
+        print("Se activa la alarma.")
         sound_alert.value =True
         time.sleep(1)
-        ###
-        led.value = False
         sound_alert.value = False
         time.sleep(1)
-        print(button.value)
     time.sleep(2)
     coil_in = False
-    print(button.value)
+    print("No existe peligro de inundación.")
