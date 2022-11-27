@@ -1,6 +1,4 @@
-import board
-import time
-import digitalio
+import board, time, digitalio, busio
  
 # Reference to sensor water
 button = digitalio.DigitalInOut(board.GP3)
@@ -18,11 +16,23 @@ led.value = True
 # Alarm
 sound_alert = digitalio.DigitalInOut(board.GP17)
 sound_alert.direction = digitalio.Direction.OUTPUT
- 
+
+uart = busio.UART(board.TX, board.RX, baudrate=9600)
+
+def serial_port(data):
+    if data is not None:
+        data_string = ''.join([chr(b) for b in data])
+        print(data_string, end="")
+
 while True:
+    data = uart.read(32)
+
+    serial_port(data)
+
     # To read all time what value have waters' sensor
     button.direction = digitalio.Direction.INPUT
     while not button.value:
+        serial_port(data)
         print("Existe peligro de inundación.")
         if button.value:
             coil_in = True
