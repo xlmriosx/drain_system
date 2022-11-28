@@ -1,6 +1,7 @@
 import board, time, digitalio, busio, json
 
 slave_bus = busio.I2C(sda=board.GP6, scl=board.GP7)
+uart = busio.UART(board.GP0, board.GP1)
 
 # Reference to sensor water
 button = digitalio.DigitalInOut(board.GP3)
