@@ -57,3 +57,4 @@ while True:
         
     json_str(button_js, coil_in_js, sound_alert_js)
 #     print("No existe peligro de inundación.")
+    
