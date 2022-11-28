@@ -1,4 +1,6 @@
-import board, time, digitalio, busio
+import board, time, digitalio, busio, json
+
+slave_bus = busio.I2C(sda=board.GP6, scl=board.GP7)
 
 # Reference to sensor water
 button = digitalio.DigitalInOut(board.GP3)
@@ -28,7 +30,7 @@ def json_str(button, coil_in, sound_alert):
     sensors_position_hg = f'''"type":"sensor_position_hg", "current_state":"{button}"'''
     sensors = "[{"+sensors_position_hg+"}]"
     json = "{\n"+header+'\n"actuators":'+actuators+'\n"sensors":'+sensors+"\n}"
-    print(json)
+    return json
 
 
 while True:
@@ -54,7 +56,14 @@ while True:
         coil_in = False
         
         sound_alert_js = "off"
-        
-    json_str(button_js, coil_in_js, sound_alert_js)
-#     print("No existe peligro de inundación.")
     
+    json_data = json_str(button_js, coil_in_js, sound_alert_js)
+    print(json_str(button_js, coil_in_js, sound_alert_js))
+
+#     print("No existe peligro de inundación.")
+    serialized_data = json.dumps(json_data)
+    with slave_bus.wait(0x11, 0x33, timeout=None) as i2c_request:
+        if i2c_request.is_write:
+            slave_bus.write(serialized_data)
+        else:
+           register = slave_bus.read(1)[0]
