@@ -1,24 +1,21 @@
-import board, time, digitalio, busio, json
+from machine import Pin, ADC
+import time
+import json
 
-slave_bus = busio.I2C(sda=board.GP6, scl=board.GP7)
-uart = busio.UART(board.GP0, board.GP1)
+# To make sure microcontroller is working
+led = Pin("LED", Pin.OUT)
+led.off()
 
 # Reference to sensor water
-button = digitalio.DigitalInOut(board.GP3)
-# button.direction = digitalio.Direction.INPUT
- 
+sensor_position = Pin(16, Pin.IN, Pin.PULL_UP)
+
 # Energy coil to activate engine
-coil_in = digitalio.DigitalInOut(board.GP13)
-coil_in.direction = digitalio.Direction.OUTPUT
- 
-# To make sure microcontroller is working
-led = digitalio.DigitalInOut(board.LED)
-led.direction = digitalio.Direction.OUTPUT
-led.value = True
- 
+coil_in = Pin(0, Pin.OUT, Pin.PULL_DOWN)
+coil_in.off()
+
 # Alarm
-sound_alert = digitalio.DigitalInOut(board.GP17)
-sound_alert.direction = digitalio.Direction.OUTPUT
+sound_alert = Pin(1, Pin.OUT, Pin.PULL_DOWN)
+sound_alert.off()
 
 def json_str(button, coil_in, sound_alert):
 #     2022-26-11T13:59:59Z
@@ -33,38 +30,37 @@ def json_str(button, coil_in, sound_alert):
     json = "{\n"+header+'\n"actuators":'+actuators+'\n"sensors":'+sensors+"\n}"
     return json
 
-
 while True:
-    # To read all time what value have waters' sensor
-    button.direction = digitalio.Direction.INPUT
-    time.sleep(5)
-    if button.value:
+    print(sensor_position.value())
+    led.on()
+    coil_in.on()
+    time.sleep_ms(500)
+    led.off()
+    
+    
+    if (sensor_position.value()):
         button_js = "on"
         
         coil_in_js = "on"
-        coil_in = True
+        coil_in.on()
         
         sound_alert_js = "on"
-        sound_alert.value =True
-        time.sleep(1)
-        sound_alert.value = False
-        time.sleep(1)
+        sound_alert.on()
+        time.sleep(1.5)
+        sound_alert.off()
+        time.sleep(1.5)
     
-    if not button.value:
+    if (not sensor_position.value()):
         button_js = "off"
         
         coil_in_js = "off"
-        coil_in = False
+        coil_in.off()
         
         sound_alert_js = "off"
+        time.sleep(3)
     
     json_data = json_str(button_js, coil_in_js, sound_alert_js)
     print(json_str(button_js, coil_in_js, sound_alert_js))
-
-#     print("No existe peligro de inundación.")
+     #     print("No existe peligro de inundación.")
     serialized_data = json.dumps(json_data)
-    with slave_bus.wait(0x11, 0x33, timeout=None) as i2c_request:
-        if i2c_request.is_write:
-            slave_bus.write(serialized_data)
-        else:
-           register = slave_bus.read(1)[0]
+   
