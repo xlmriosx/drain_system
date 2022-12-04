@@ -1,66 +1,65 @@
-from machine import Pin, ADC
-import time
-import json
+#Code for Raspberry Pi Pico
+import utime
+import machine
+from machine import I2C,Pin
+import uasyncio
 
-# To make sure microcontroller is working
-led = Pin("LED", Pin.OUT)
-led.off()
+led = machine.Pin(25, machine.Pin.OUT)
+led.value(0)
 
-# Reference to sensor water
-sensor_position = Pin(16, Pin.IN, Pin.PULL_UP)
+I2C_Arduino = 0x04 #I2C Address of NodeMCU
+data = "Nada" #Data to send to I2C device
 
-# Energy coil to activate engine
-coil_in = Pin(0, Pin.OUT, Pin.PULL_DOWN)
+i2c = I2C(0, sda=machine.Pin(0), scl=machine.Pin(1), freq=10000)
+print(i2c)
+print("Initalizing I2C as Master")
+
+
+### CONFIG Sensor water ###
+sensor_position = Pin(16, Pin.IN, Pin.PULL_DOWN)
+###########################
+
+### CONFIG Energy coil to activate engine ###
+coil_in = Pin(15, Pin.OUT)
 coil_in.off()
+######################################
 
-# Alarm
-sound_alert = Pin(1, Pin.OUT, Pin.PULL_DOWN)
+### CONFIG Alarm ###
+sound_alert = Pin(13, Pin.OUT)
 sound_alert.off()
+####################
 
-def json_str(button, coil_in, sound_alert):
-#     2022-26-11T13:59:59Z
-    date = time.localtime()
-    date = f'{date[0]}-{date[1]}-{date[2]}T{date[3]}:{date[4]}:{date[5]}Z'
-    header = f'''"controller_name":"Raspberry-Pi-Pico", "date":"{date}",'''
-    actuators_sound_alert = f'''"type":"buzzer", "current_state":"{sound_alert}"'''
-    actuators_coil_in = f'''"type":"engine_drainer", "current_state":"{coil_in}"'''
-    actuators = "[{"+actuators_sound_alert+"},"+"{"+actuators_coil_in+"}],"
-    sensors_position_hg = f'''"type":"sensor_position_hg", "current_state":"{button}"'''
-    sensors = "[{"+sensors_position_hg+"}]"
-    json = "{\n"+header+'\n"actuators":'+actuators+'\n"sensors":'+sensors+"\n}"
-    return json
+def json_str(sensor, coil, buzzer):
+#   2022-26-11T13:59:59Z
+    return 'header '
+    
+    
 
 while True:
-    print(sensor_position.value())
-    led.on()
-    coil_in.on()
-    time.sleep_ms(500)
-    led.off()
-    
-    
     if (sensor_position.value()):
-        button_js = "on"
-        
-        coil_in_js = "on"
         coil_in.on()
-        
-        sound_alert_js = "on"
         sound_alert.on()
-        time.sleep(1.5)
+        utime.sleep(1)
         sound_alert.off()
-        time.sleep(1.5)
-    
-    if (not sensor_position.value()):
-        button_js = "off"
+        utime.sleep(1)
+        buzzer = 1
         
-        coil_in_js = "off"
+    else:
         coil_in.off()
+        buzzer = 0
         
-        sound_alert_js = "off"
-        time.sleep(3)
-    
-    json_data = json_str(button_js, coil_in_js, sound_alert_js)
-    print(json_str(button_js, coil_in_js, sound_alert_js))
-     #     print("No existe peligro de inundación.")
-    serialized_data = json.dumps(json_data)
-   
+    try:
+        print(json_str(sensor_position.value(), coil_in.value(),buzzer))
+        data = '4-S1:'+str(sensor_position.value())+'-A1:'+str(coil_in.value())+'-A2:'+str(buzzer)
+        message = 'Sending: ['+data+'] to: I2C_Arduino'
+        print(message)
+        i2c.writeto(I2C_Arduino, data) #This line is responsible for sending data to nodemcu 
+        a = i2c.readfrom(I2C_Arduino,6) #This line responsible for read data from Nodemcu
+        led.value(1)
+        print(a)
+        utime.sleep(0.1)
+        led.value(0)
+        utime.sleep(0.1)
+    except:
+        print('Error de conexion')
+        
