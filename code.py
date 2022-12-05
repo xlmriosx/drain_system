@@ -30,8 +30,17 @@ sound_alert.off()
 ####################
 
 def json_str(sensor, coil, buzzer):
-#   2022-26-11T13:59:59Z
-    return 'header '
+#     2022-26-11T13:59:59Z
+    date = time.localtime()
+    date = f'{date[0]}-{date[1]}-{date[2]}T{date[3]}:{date[4]}:{date[5]}Z'
+    header = f'''"controller_name":"Raspberry-Pi-Pico", "date":"{date}",'''
+    actuators_sound_alert = f'''"type":"buzzer", "current_state":"{sound_alert}"'''
+    actuators_coil_in = f'''"type":"engine_drainer", "current_state":"{coil_in}"'''
+    actuators = "[{"+actuators_sound_alert+"},"+"{"+actuators_coil_in+"}],"
+    sensors_position_hg = f'''"type":"sensor_position_hg", "current_state":"{button}"'''
+    sensors = "[{"+sensors_position_hg+"}]"
+    json = "{\n"+header+'\n"actuators":'+actuators+'\n"sensors":'+sensors+"\n}"
+    return json
     
     
 
@@ -49,7 +58,7 @@ while True:
         buzzer = 0
         
     try:
-        print(json_str(sensor_position.value(), coil_in.value(),buzzer))
+        print(json_str(sensor_position.value(), coil_in.value(), buzzer))
         data = '4-S1:'+str(sensor_position.value())+'-A1:'+str(coil_in.value())+'-A2:'+str(buzzer)
         message = 'Sending: ['+data+'] to: I2C_Arduino'
         print(message)
