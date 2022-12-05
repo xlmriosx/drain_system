@@ -1,10 +1,17 @@
 #include <Wire.h>
 #include <time.h>
+#include <ArduinoJson.h>
 
 const int sensor = 2;
 const int coil = 4;
 const int buzzer = 7;
 
+const char ASK_FOR_LENGTH = 'L';
+const char ASK_FOR_DATA = 'D';
+String message; 
+
+char request = ' ';
+char requestIndex = 0;
 
 void setup() {
   Wire.begin(4);                /* join i2c bus with address 4 */
@@ -16,12 +23,28 @@ void setup() {
   pinMode(buzzer, OUTPUT); // Buzzer
   digitalWrite(sensor, HIGH);
 
+  Wire.onRequest(requestEvent);
+  Wire.onReceive(receiveEvent);
+
 }
 
 void loop() {
-  int sensor_json = 0;
-  int coil_json = 1;
-  int buzzer_json = 1;
+  message = ""; 
+  StaticJsonDocument<136> doc; 
+  StaticJsonDocument<52> actuator1;
+  StaticJsonDocument<52> actuator2;
+  StaticJsonDocument<52> sensor1;
+  actuator1["type"]="speaker";
+  actuator2["type"]="rele";
+  sensor1["type"]= "position_sensor";
+  JsonArray arrActuators = doc.createNestedArray("actuators");
+  JsonArray arrSensors = doc.createNestedArray("sensors");
+  
+  arrActuators.add(actuator1);
+  arrActuators.add(actuator2);
+  arrSensors.add(sensor1);
+  
+
   int sensor_state = digitalRead(sensor);
   if(sensor_state == 0){
     digitalWrite(coil, HIGH);
@@ -31,40 +54,23 @@ void loop() {
     digitalWrite(buzzer, LOW);
     delay(500);
 
-    int sensor_json = 0;
-    int coil_json = 1;
-    int buzzer_json = 1;
+    actuator1["current_value"] = 1;
+    actuator2["current_value"] = 1;
+    sensor1["current_value"] = 0;
   }
   if(sensor_state == 1){
     digitalWrite(coil, LOW);
 
-    int sensor_json = 1;
-    int coil_json = 0;
-    int buzzer_json = 0;
+    actuator1["current_value"] = 0;
+    actuator2["current_value"] = 0;
+    sensor1["current_value"] = 1;
   }
-  write_serial_wire(buzzer_json, coil_json, sensor_json);
+  doc["controller_name"]="Arduino-Uno";
+  // Convert Json to String
+  serializeJson(doc, message);
+  Serial.println(message); 
   Serial.println();
   
-}
-
-void write_serial_wire(int buzzer_json, int coil_json, int sensor_json){
-  Serial.print("{\"controller_name\":\"Raspberry-Pi-Pico\",");
-  Serial.print("\"date\":\"\",");
-  Serial.print("\"actuators\":\[{\"type\":\"speaker\",\"current_value\":");
-  Serial.print(buzzer_json);Serial.print("},");
-  Serial.print("{\"type\":\"rele\",\"current_value\":");
-  Serial.print(coil_json);Serial.print("}],");
-  Serial.print("\"sensors\":[{\"type\":\"position_sensor\",\"current_value\":");
-  Serial.print(coil_json);Serial.print("}]}");
-  
-  Wire.write("{\"controller_name\":\"Raspberry-Pi-Pico\",");
-  Wire.write("\"date\":\"\",");
-  Wire.write("\"actuators\":\[{\"type\":\"speaker\",\"current_value\":");
-  Wire.write(buzzer_json);Wire.write("},");
-  Wire.write("{\"type\":\"rele\",\"current_value\":");
-  Wire.write(coil_json);Wire.write("}],");
-  Wire.write("\"sensors\":[{\"type\":\"position_sensor\",\"current_value\":");
-  Wire.write(coil_json);Wire.write("}]}");
 }
 
 
@@ -78,7 +84,27 @@ void receiveEvent(int howMany) {
 }
 
 // function that executes whenever data is requested from master
-void requestEvent() {
-  
-
+void requestEvent()
+{
+  if(request == ASK_FOR_LENGTH)
+  {
+    Wire.write(message.length());
+    Serial.println(request);
+    Serial.println(message.length());    
+    char requestIndex = 0;
+  }
+  if(request == ASK_FOR_DATA)
+  {
+    if(requestIndex < (message.length() / 32)) 
+    {
+      Wire.write(message.c_str() + requestIndex * 32, 32);
+      requestIndex ++;
+      Serial.println(requestIndex); 
+    }
+    else
+    {
+      Wire.write(message.c_str() + requestIndex * 32, (message.length() % 32));
+      requestIndex = 0;
+    }
+  }
 }
